@@ -1,0 +1,11 @@
+{
+  "customerId": "CUST-002",
+  "shippingAddress": "Calle Principal 456, Quito, Ecuador",
+  "paymentReference": "PAY-67890",
+  "items": [
+    {
+      "productId": "P-001",
+      "quantity": 50
+    }
+  ]
+}

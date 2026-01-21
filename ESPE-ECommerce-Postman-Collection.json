@@ -1,0 +1,442 @@
+{
+  "info": {
+    "name": "ESPE E-Commerce Microservices",
+    "description": "Colección completa de pruebas para el sistema de e-commerce con microservicios y RabbitMQ",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Health Checks",
+      "item": [
+        {
+          "name": "1. Inventory - Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{inventory_service_url}}/health",
+              "host": ["{{inventory_service_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Service is UP\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"UP\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Inventory Service",
+      "item": [
+        {
+          "name": "2. Inventory - Get Stock P-001",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{inventory_service_url}}/api/v1/products/P-001/stock",
+              "host": ["{{inventory_service_url}}"],
+              "path": ["api", "v1", "products", "P-001", "stock"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Product ID is P-001\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.productId).to.eql(\"P-001\");",
+                  "});",
+                  "",
+                  "pm.test(\"Has stock information\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('availableStock');",
+                  "    pm.expect(jsonData).to.have.property('reservedStock');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Inventory - Get Stock P-002",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{inventory_service_url}}/api/v1/products/P-002/stock",
+              "host": ["{{inventory_service_url}}"],
+              "path": ["api", "v1", "products", "P-002", "stock"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. Inventory - Product Not Found",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{inventory_service_url}}/api/v1/products/P-999/stock",
+              "host": ["{{inventory_service_url}}"],
+              "path": ["api", "v1", "products", "P-999", "stock"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Error message is present\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('error');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Inventory - Verify Stock Reduction",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{inventory_service_url}}/api/v1/products/P-001/stock",
+              "host": ["{{inventory_service_url}}"],
+              "path": ["api", "v1", "products", "P-001", "stock"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Reserved stock is greater than 0\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.reservedStock).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Order Service - Success Path",
+      "item": [
+        {
+          "name": "5. Order - Create Order (Success Path)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"CUST-001\",\n  \"shippingAddress\": \"Av. Universitaria 123, Sangolquí, Ecuador\",\n  \"paymentReference\": \"PAY-12345\",\n  \"items\": [\n    {\n      \"productId\": \"P-001\",\n      \"quantity\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{order_service_url}}/api/v1/orders",
+              "host": ["{{order_service_url}}"],
+              "path": ["api", "v1", "orders"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Guardar orderId en variable de entorno",
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set(\"order_id\", response.orderId);",
+                  "    console.log(\"✅ Order ID guardado: \" + response.orderId);",
+                  "}",
+                  "",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Order status is PENDING\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"PENDING\");",
+                  "});",
+                  "",
+                  "pm.test(\"Order has ID\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('orderId');",
+                  "});",
+                  "",
+                  "console.log(\"⏱️ Espera 5 segundos antes de consultar el estado de la orden\");"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Order - Get Order by ID (CONFIRMED)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_service_url}}/api/v1/orders/{{order_id}}",
+              "host": ["{{order_service_url}}"],
+              "path": ["api", "v1", "orders", "{{order_id}}"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Order status is CONFIRMED\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"CONFIRMED\");",
+                  "});",
+                  "",
+                  "pm.test(\"UpdatedAt is after CreatedAt\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    const created = new Date(jsonData.createdAt);",
+                  "    const updated = new Date(jsonData.updatedAt);",
+                  "    pm.expect(updated.getTime()).to.be.greaterThan(created.getTime());",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Order - Create Multi-Product Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"CUST-003\",\n  \"shippingAddress\": \"Av. Los Shyris 234, Quito, Ecuador\",\n  \"paymentReference\": \"PAY-MULTI-001\",\n  \"items\": [\n    {\n      \"productId\": \"P-001\",\n      \"quantity\": 1\n    },\n    {\n      \"productId\": \"P-002\",\n      \"quantity\": 3\n    },\n    {\n      \"productId\": \"P-003\",\n      \"quantity\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{order_service_url}}/api/v1/orders",
+              "host": ["{{order_service_url}}"],
+              "path": ["api", "v1", "orders"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set(\"order_id_multi\", response.orderId);",
+                  "}",
+                  "",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Order has multiple items\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.items.length).to.be.above(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Order Service - Error Handling",
+      "item": [
+        {
+          "name": "8. Order - Create Order (Insufficient Stock)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"CUST-002\",\n  \"shippingAddress\": \"Calle Principal 456, Quito, Ecuador\",\n  \"paymentReference\": \"PAY-67890\",\n  \"items\": [\n    {\n      \"productId\": \"P-001\",\n      \"quantity\": 50\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{order_service_url}}/api/v1/orders",
+              "host": ["{{order_service_url}}"],
+              "path": ["api", "v1", "orders"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set(\"order_id_rejected\", response.orderId);",
+                  "    console.log(\"✅ Order ID (rejected) guardado: \" + response.orderId);",
+                  "}",
+                  "",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "console.log(\"⏱️ Espera 5 segundos para verificar que la orden fue cancelada\");"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. Order - Get Cancelled Order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_service_url}}/api/v1/orders/{{order_id_rejected}}",
+              "host": ["{{order_service_url}}"],
+              "path": ["api", "v1", "orders", "{{order_id_rejected}}"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Order status is CANCELLED\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"CANCELLED\");",
+                  "});",
+                  "",
+                  "pm.test(\"Cancellation reason is provided\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.cancellationReason).to.not.be.null;",
+                  "    pm.expect(jsonData.cancellationReason).to.include(\"requested\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. General",
+      "item": [
+        {
+          "name": "11. Order - List All Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_service_url}}/api/v1/orders",
+              "host": ["{{order_service_url}}"],
+              "path": ["api", "v1", "orders"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is an array\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test(\"At least one order exists\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.length).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "order_service_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "inventory_service_url",
+      "value": "http://localhost:8081",
+      "type": "string"
+    }
+  ]
+}

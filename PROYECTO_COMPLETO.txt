@@ -1,0 +1,339 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║        SISTEMA DE E-COMMERCE CON MICROSERVICIOS Y RABBITMQ                ║
+║                                                                           ║
+║        Universidad de las Fuerzas Armadas (ESPE)                         ║
+║        Aplicaciones Distribuidas - Control de Lectura                    ║
+║        Enero 2026                                                         ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+✅ PROYECTO COMPLETADO AL 100%
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                         COMPONENTES DEL SISTEMA                           │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  📦 ORDER SERVICE (Java Spring Boot 3.2.1)
+     ├─ Puerto: 8080
+     ├─ Base de Datos: H2 (in-memory)
+     ├─ Endpoints:
+     │  ├─ POST /api/v1/orders
+     │  └─ GET /api/v1/orders/{orderId}
+     └─ Funciones:
+        ├─ Crear pedidos (PENDING)
+        ├─ Publicar evento OrderCreated
+        ├─ Consumir eventos StockReserved/Rejected
+        └─ Actualizar estado (CONFIRMED/CANCELLED)
+
+  📦 INVENTORY SERVICE (Node.js 18 + Express)
+     ├─ Puerto: 8081
+     ├─ Base de Datos: PostgreSQL 15
+     ├─ Endpoints:
+     │  ├─ GET /api/v1/products/{productId}/stock
+     │  └─ GET /health
+     └─ Funciones:
+        ├─ Gestionar inventario (5 productos)
+        ├─ Consumir evento OrderCreated
+        ├─ Verificar y reservar stock
+        └─ Publicar StockReserved/Rejected
+
+  🐰 RABBITMQ (Message Broker)
+     ├─ Puerto AMQP: 5672
+     ├─ Management UI: 15672
+     ├─ Exchange: orders.exchange (Topic)
+     └─ Queues:
+        ├─ order.created.queue
+        ├─ stock.reserved.queue
+        └─ stock.rejected.queue
+
+  🗄️ POSTGRESQL 15
+     ├─ Puerto: 5432
+     ├─ Database: inventorydb
+     └─ Tabla: products_stock
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                        FLUJO DE PROCESAMIENTO                             │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  1️⃣  Cliente → POST /orders → Order Service
+  
+  2️⃣  Order Service → Guardar pedido (PENDING) → H2
+  
+  3️⃣  Order Service → Publicar OrderCreated → RabbitMQ
+  
+  4️⃣  RabbitMQ → Enrutar a order.created.queue
+  
+  5️⃣  Inventory Service → Consumir OrderCreated
+  
+  6️⃣  Inventory Service → Verificar Stock → PostgreSQL
+  
+      ┌─────────────────────────────┬──────────────────────────────┐
+      │                             │                              │
+      ▼                             ▼                              │
+   ✅ Stock OK                   ❌ Stock NO                       │
+      │                             │                              │
+      ├─ Reservar stock            ├─ Preparar rechazo            │
+      │                             │                              │
+      ├─ Publicar                  ├─ Publicar                    │
+      │  StockReserved              │  StockRejected               │
+      │                             │                              │
+      └────────┬────────────────────┴──────────────────────────────┘
+               │
+               ▼
+  7️⃣  RabbitMQ → Enrutar respuesta
+  
+  8️⃣  Order Service → Consumir respuesta
+  
+  9️⃣  Order Service → Actualizar estado:
+      ├─ CONFIRMED (si StockReserved)
+      └─ CANCELLED (si StockRejected + razón)
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                      ARCHIVOS DE DOCUMENTACIÓN                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  📄 INDICE.md                  ← Navegación por toda la documentación
+  📄 QUICKSTART.md              ← ⭐ INICIO RÁPIDO (3 pasos)
+  📄 README.md                  ← Documentación completa
+  📄 RESUMEN_EJECUTIVO.md       ← Vista general del proyecto
+  📄 ARCHITECTURE.md            ← Diagramas de arquitectura
+  📄 DIAGRAMAS_SECUENCIA.md     ← Flujos paso a paso
+  📄 TEST_CASES.md              ← Suite de 8 pruebas
+  📄 test-requests.http         ← Ejemplos de peticiones
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                      CÓMO EJECUTAR EL PROYECTO                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  OPCIÓN 1: Script Automatizado (Windows)
+  ----------------------------------------
+  C:\...\ControlDeLectura> .\start.bat
+
+
+  OPCIÓN 2: Script Automatizado (Linux/Mac)
+  ------------------------------------------
+  $ chmod +x start.sh
+  $ ./start.sh
+
+
+  OPCIÓN 3: Docker Compose Manual
+  --------------------------------
+  $ cd infrastructure
+  $ docker-compose up --build
+
+
+  ⏱️ Tiempo de inicio: ~30-45 segundos
+
+  ✅ Sistema listo cuando veas:
+     - "RabbitMQ consumer started successfully"
+     - "Order Service running on port 8080"
+     - "Inventory Service running on port 8081"
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                      PRUEBA RÁPIDA DEL SISTEMA                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  1. Crear un pedido:
+     
+     curl -X POST http://localhost:8080/api/v1/orders \
+       -H "Content-Type: application/json" \
+       -d '{
+         "customerId": "CUST-001",
+         "items": [{"productId": "P-001", "quantity": 2}],
+         "shippingAddress": "Sangolquí, Ecuador",
+         "paymentReference": "PAY-001"
+       }'
+     
+     → Guarda el "orderId" de la respuesta
+
+
+  2. Esperar 3 segundos (procesamiento asíncrono)
+
+
+  3. Consultar estado del pedido:
+     
+     curl http://localhost:8080/api/v1/orders/{orderId}
+     
+     → Debe mostrar: "status": "CONFIRMED"
+
+
+  4. Verificar stock actualizado:
+     
+     curl http://localhost:8081/api/v1/products/P-001/stock
+     
+     → availableStock debe ser 23 (25 - 2)
+     → reservedStock debe ser 2
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                      PRODUCTOS DISPONIBLES                                │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  P-001  │  Laptop Dell XPS 15          │  25 unidades
+  P-002  │  Mouse Logitech MX Master    │  50 unidades
+  P-003  │  Keyboard Mechanical RGB     │  30 unidades
+  P-004  │  Monitor LG 27" 4K           │  15 unidades
+  P-005  │  Webcam Logitech C920        │  40 unidades
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                      URLS DEL SISTEMA                                     │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  🌐 Order Service:        http://localhost:8080
+  🌐 Inventory Service:    http://localhost:8081
+  🐰 RabbitMQ Management:  http://localhost:15672
+     Usuario: guest  /  Contraseña: guest
+  🗄️ H2 Console:           http://localhost:8080/h2-console
+     JDBC URL: jdbc:h2:mem:orderdb
+     Usuario: sa  /  Contraseña: (vacío)
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                      COMANDOS ÚTILES                                      │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  Ver logs en tiempo real:
+  $ docker-compose logs -f
+
+  Ver logs de un servicio específico:
+  $ docker-compose logs -f order-service
+  $ docker-compose logs -f inventory-service
+
+  Detener el sistema:
+  $ docker-compose down
+
+  Detener y eliminar datos:
+  $ docker-compose down -v
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                      ESTRUCTURA DEL PROYECTO                              │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  ControlDeLectura/
+  │
+  ├── 📄 Documentación (7 archivos .md)
+  │   ├── INDICE.md
+  │   ├── QUICKSTART.md           ⭐ Comenzar aquí
+  │   ├── README.md
+  │   ├── RESUMEN_EJECUTIVO.md
+  │   ├── ARCHITECTURE.md
+  │   ├── DIAGRAMAS_SECUENCIA.md
+  │   └── TEST_CASES.md
+  │
+  ├── 🚀 Scripts de Inicio
+  │   ├── start.bat               (Windows)
+  │   └── start.sh                (Linux/Mac)
+  │
+  ├── 🧪 Archivos de Prueba
+  │   └── test-requests.http
+  │
+  ├── 📦 order-service/           (Java Spring Boot)
+  │   ├── src/main/java/...       (17 archivos .java)
+  │   ├── src/main/resources/
+  │   ├── pom.xml
+  │   └── Dockerfile
+  │
+  ├── 📦 inventory-service/       (Node.js)
+  │   ├── src/                    (7 archivos .js)
+  │   ├── package.json
+  │   ├── .env
+  │   └── Dockerfile
+  │
+  └── 🏗️ infrastructure/
+      └── docker-compose.yml
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                      CHECKLIST DE REQUERIMIENTOS                          │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  ✅ Microservicios independientes (Java + Node.js)
+  ✅ Comunicación asíncrona con RabbitMQ
+  ✅ Event-Driven Architecture
+  ✅ Persistencia de datos (H2 + PostgreSQL)
+  ✅ Endpoints REST según especificaciones
+  ✅ UUIDs en identificadores
+  ✅ Estados de pedido (PENDING → CONFIRMED/CANCELLED)
+  ✅ Gestión de stock con reserva
+  ✅ Dockerización completa
+  ✅ Datos de prueba (seeder)
+  ✅ Documentación exhaustiva
+  ✅ Suite de pruebas completa
+  ✅ Manejo de errores
+  ✅ Logging y trazabilidad
+  ✅ Scripts de inicio automatizado
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                      ESTADÍSTICAS DEL PROYECTO                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  📊 Líneas de Código:           ~2,000+ líneas
+  📊 Archivos de Código:         24 archivos
+  📊 Archivos de Documentación:  7 archivos Markdown
+  📊 Microservicios:             2 servicios
+  📊 Endpoints REST:             3 endpoints públicos
+  📊 Eventos RabbitMQ:           3 tipos de eventos
+  📊 Contenedores Docker:        4 contenedores
+  📊 Casos de Prueba:            8 escenarios
+  📊 Productos de Ejemplo:       5 productos
+  📊 Patrones de Diseño:         5+ patrones
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                      TECNOLOGÍAS UTILIZADAS                               │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  Backend:
+  ├─ Java 17
+  ├─ Spring Boot 3.2.1
+  ├─ Spring Data JPA
+  ├─ Spring AMQP
+  ├─ Node.js 18
+  ├─ Express.js
+  └─ Sequelize ORM
+
+  Mensajería:
+  └─ RabbitMQ 3.12
+
+  Bases de Datos:
+  ├─ H2 Database (in-memory)
+  └─ PostgreSQL 15
+
+  Infraestructura:
+  ├─ Docker
+  └─ Docker Compose
+
+  Herramientas:
+  ├─ Maven
+  ├─ npm
+  └─ Git
+
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║                        🎓 PROYECTO COMPLETO                               ║
+║                                                                           ║
+║              ✅ LISTO PARA EVALUACIÓN Y EJECUCIÓN                         ║
+║                                                                           ║
+║        📚 Para comenzar, lee: QUICKSTART.md o INDICE.md                  ║
+║                                                                           ║
+║        🚀 Para ejecutar: cd infrastructure && docker-compose up          ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+Universidad de las Fuerzas Armadas (ESPE)
+Aplicaciones Distribuidas
+Enero 2026
+
+Desarrollado con ❤️ para el aprendizaje de arquitecturas distribuidas

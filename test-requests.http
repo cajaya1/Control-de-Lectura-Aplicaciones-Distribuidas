@@ -1,0 +1,59 @@
+# Ejemplo de archivo de prueba para usar con curl o Postman
+
+# 1. CREAR UN PEDIDO (Stock disponible)
+POST http://localhost:8080/api/v1/orders
+Content-Type: application/json
+
+{
+  "customerId": "550e8400-e29b-41d4-a716-446655440000",
+  "items": [
+    {
+      "productId": "P-001",
+      "quantity": 2
+    },
+    {
+      "productId": "P-002",
+      "quantity": 1
+    }
+  ],
+  "shippingAddress": "Av. General Rumiñahui S/N, Sangolquí, Pichincha, Ecuador",
+  "paymentReference": "PAY-2026-001-TARJETA"
+}
+
+###
+
+# 2. CONSULTAR PEDIDO (Reemplazar {orderId} con el ID obtenido)
+GET http://localhost:8080/api/v1/orders/{orderId}
+
+###
+
+# 3. CONSULTAR STOCK DE PRODUCTO
+GET http://localhost:8081/api/v1/products/P-001/stock
+
+###
+
+# 4. CREAR PEDIDO CON STOCK INSUFICIENTE (Para probar rechazo)
+POST http://localhost:8080/api/v1/orders
+Content-Type: application/json
+
+{
+  "customerId": "550e8400-e29b-41d4-a716-446655440001",
+  "items": [
+    {
+      "productId": "P-001",
+      "quantity": 100
+    }
+  ],
+  "shippingAddress": "Quito, Ecuador",
+  "paymentReference": "PAY-2026-002-EFECTIVO"
+}
+
+###
+
+# 5. HEALTH CHECK - Order Service
+GET http://localhost:8080/actuator/health
+
+###
+
+# 6. HEALTH CHECK - Inventory Service
+GET http://localhost:8081/health

@@ -1,0 +1,11 @@
+{
+  "customerId": "CUST-001",
+  "shippingAddress": "Av. Universitaria 123, Sangolquí, Ecuador",
+  "paymentReference": "PAY-12345",
+  "items": [
+    {
+      "productId": "P-001",
+      "quantity": 2
+    }
+  ]
+}
